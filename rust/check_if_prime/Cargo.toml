@@ -1,0 +1,12 @@
+[package]
+name = "check_if_prime"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_check_if_prime"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.16.5", features = ["extension-module"] }
+primes = "0.3.0"

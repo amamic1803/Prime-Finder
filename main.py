@@ -2,7 +2,7 @@ from tkinter import *
 from multiprocessing import Pool, freeze_support
 import sys
 import os
-from numba import njit, uint64, boolean
+import rust_check_if_prime
 from math import floor
 
 
@@ -14,16 +14,6 @@ def resource_path(relative_path):
 	except AttributeError:
 		base_path = os.path.abspath(".")
 	return os.path.join(base_path, relative_path)
-
-@njit(boolean(uint64))
-def check_prime(n: int):  # 18446744073709551615
-	if n >= 2:
-		for i in range(2, floor(n ** 0.5) + 1):
-			if n % i == 0:
-				return False
-		return True
-	else:
-		return False
 
 def check_prime_overflow(n: int):
 	if n >= 2:
