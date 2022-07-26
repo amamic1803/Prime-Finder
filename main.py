@@ -58,7 +58,54 @@ def generate_click(event):
 def validate_click(event):
 	global disabled
 	if not disabled:
-		pass
+		path = file_ent.get()
+		if os.path.isfile(path):
+			num_of_cpus = os.cpu_count()
+			with open(file=path, mode="r", encoding="utf-8") as file, Pool(processes=num_of_cpus) as pool:
+				queue = []
+				good = True
+				ended = False
+				while True:
+					if len(queue) < 2 * num_of_cpus and not ended:
+						line = file.readline()
+						if line != "":
+							try:
+								line = int(line.rstrip("\n"))
+							except ValueError:
+								good = False
+								break
+							queue.append(pool.apply_async(check_if_prime, args=(line, )))
+						else:
+							ended = True
+					elif len(queue) == 0 and ended:
+						break
+					else:
+						if not queue[0].get():
+							good = False
+							break
+						queue.pop(0)
+				curr_pos = file.tell()
+				file.seek(0, os.SEEK_END)
+				if good and file.tell() == curr_pos and get_last_line(path)[-1] == "\n":
+					showinfo(title="Validation", message="The file is valid!")
+				else:
+					showerror(title="Validation", message="The file is not valid!")
+		else:
+			showerror(title="File error!", message="Invalid file selected!")
+
+def check_click(event=None):
+	global disabled
+	if not disabled:
+		num = num_ent.get()
+		try:
+			num = int(num)
+			toggle_gui()
+			process_num = Process(target=check_if_prime, args=(num, True))
+			process_num.start()
+			waiting_thread = Thread(target=wait_check_to_end, args=(process_num, ))
+			waiting_thread.start()
+		except ValueError:
+			pass
 
 def get_last_line(file_path):
 	with open(file_path, "rb") as file:
@@ -83,20 +130,6 @@ def check_if_prime(n: int, showresult=False):
 				showinfo(title="Prime Finder", message=f"{n} is NOT a prime number!")
 		else:
 			return ret
-
-def num_prime_check(event=None):
-	global disabled
-	if not disabled:
-		num = num_ent.get()
-		try:
-			num = int(num)
-			toggle_gui()
-			process_num = Process(target=check_if_prime, args=(num, True))
-			process_num.start()
-			waiting_thread = Thread(target=wait_check_to_end, args=(process_num, ))
-			waiting_thread.start()
-		except ValueError:
-			pass
 
 def wait_check_to_end(process):
 	process.join()
@@ -160,7 +193,7 @@ if __name__ == '__main__':
 	num_btn.place(x=420, y=100, width=65, height=30)
 	num_btn.bind("<Enter>", lambda event: change_thickness(event, num_btn, False))
 	num_btn.bind("<Leave>", lambda event: change_thickness(event, num_btn, True))
-	num_btn.bind("<ButtonRelease-1>", num_prime_check)
+	num_btn.bind("<ButtonRelease-1>", check_click)
 
 	file_lbl = Label(root, text="Generate primes:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
 	file_lbl.place(x=0, y=155, width=145, height=30)
