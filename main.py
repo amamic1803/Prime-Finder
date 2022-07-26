@@ -60,6 +60,16 @@ def validate_click(event):
 	if not disabled:
 		pass
 
+def get_last_line(file_path):
+	with open(file_path, "rb") as file:
+		try:
+			file.seek(-2, os.SEEK_END)
+			while file.read(1) != b'\n':
+				file.seek(-2, os.SEEK_CUR)
+		except OSError:
+			file.seek(0)
+		return file.readline().decode()
+
 def check_if_prime(n: int, showresult=False):
 	try:
 		ret = rust_check_if_prime.run(n)
