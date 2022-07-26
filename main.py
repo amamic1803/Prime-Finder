@@ -42,7 +42,7 @@ def browse_click(event):
 		init_dir = os.path.dirname(file_ent.get())
 		if not os.path.isdir(init_dir):
 			init_dir = os.path.join(os.path.expanduser('~'), 'Desktop')
-		selection = askopenfilename(filetypes=(("All files", ""), ("Video files", "*.mp4;*.avi;*.mpg;*.mov;*.wmv;*.mkv"), ("JPEG files", "*.jpeg;*.jpg"), ("Portable Network Graphics", "*.png"), ("Windows bitmaps", "*.bmp;*.dib"), ("WebP", "*.webp"), ("Sun rasters", "*.sr;*.ras"), ("TIFF files", "*.tiff;*.tif")), initialdir=init_dir, parent=root)
+		selection = askopenfilename(filetypes=(("Text file", "*.txt"), ), initialdir=init_dir, parent=root)
 		if selection != "":
 			file_ent.delete(0, END)
 			file_ent.insert(0, selection.replace("/", "\\"))
@@ -56,9 +56,9 @@ def check_if_prime(n: int, showresult=False):
 	if psutil.Process(os.getpid()).parent() is not None:
 		if showresult:
 			if ret:
-				showinfo(title="Prime Finder", message=f"{n} IS a prime number!")
+				showinfo(title="Prime Finder", message=f"{n} is a prime number!")
 			else:
-				showinfo(title="Prime Finder", message=f"{n} IS NOT a prime number!")
+				showinfo(title="Prime Finder", message=f"{n} is NOT a prime number!")
 		else:
 			return ret
 
@@ -101,22 +101,22 @@ if __name__ == '__main__':
 	title = Label(root, text="Prime Finder", font=("Helvetica", 30, "bold", "italic"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
 	title.place(x=0, y=0, width=500, height=100)
 
-	num_lbl = Label(root, text="File:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#202A44", activebackground="#202A44", foreground="#ffffff", activeforeground="#ffffff")
-	num_lbl.place(x=0, y=150, width=50, height=30)
-	num_ent = Entry(root, font=("Helvetica", 10), validate="key", validatecommand=(reg, "%P"), borderwidth=0, highlightthickness=1, highlightbackground="green", highlightcolor="green", disabledbackground="grey15", disabledforeground="#ffffff", background="grey15", foreground="#ffffff", justify=LEFT, insertbackground="#ffffff")
-	num_ent.place(x=46, y=150, width=390, height=30)
-	num_btn = Label(root, text="Browse", font=("Helvetica", 10), highlightthickness=1, highlightbackground="green", highlightcolor="green", borderwidth=0, background="grey15", activebackground="grey15", foreground="#ffffff", activeforeground="#ffffff")
-	num_btn.place(x=435, y=150, width=65, height=30)
+	num_lbl = Label(root, text="Check number:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
+	num_lbl.place(x=0, y=100, width=145, height=30)
+	num_ent = Entry(root, font=("Helvetica", 10), justify=CENTER, validate="key", validatecommand=(reg, "%P"), borderwidth=0, highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", disabledbackground="#263939", disabledforeground="#ffffff", background="#406060", foreground="#ffffff", insertbackground="#ffffff")
+	num_ent.place(x=141, y=100, width=264, height=30)
+	num_btn = Label(root, text="Check", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	num_btn.place(x=420, y=100, width=65, height=30)
 	num_btn.bind("<Enter>", lambda event: change_thickness(event, num_btn, False))
 	num_btn.bind("<Leave>", lambda event: change_thickness(event, num_btn, True))
 	num_btn.bind("<ButtonRelease-1>", num_prime_check)
 
-	file_lbl = Label(root, text="File:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#202A44", activebackground="#202A44", foreground="#ffffff", activeforeground="#ffffff")
-	#file_lbl.place(x=0, y=150, width=50, height=30)
-	file_ent = Entry(root, font=("Helvetica", 10), borderwidth=0, highlightthickness=1, highlightbackground="green", highlightcolor="green", disabledbackground="grey15", disabledforeground="#ffffff", background="grey15", foreground="#ffffff", justify=LEFT, insertbackground="#ffffff")
-	#file_ent.place(x=46, y=150, width=390, height=30)
-	browse_btn = Label(root, text="Browse", font=("Helvetica", 10), highlightthickness=1, highlightbackground="green", highlightcolor="green", borderwidth=0, background="grey15", activebackground="grey15", foreground="#ffffff", activeforeground="#ffffff")
-	#browse_btn.place(x=435, y=150, width=65, height=30)
+	file_lbl = Label(root, text="Generate primes:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
+	file_lbl.place(x=0, y=150, width=145, height=30)
+	file_ent = Entry(root, font=("Helvetica", 10), borderwidth=0, highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", disabledbackground="#263939", disabledforeground="#ffffff", background="#406060", foreground="#ffffff", justify=LEFT, insertbackground="#ffffff")
+	file_ent.place(x=141, y=150, width=264, height=30)
+	browse_btn = Label(root, text="Browse", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	browse_btn.place(x=420, y=150, width=65, height=30)
 	browse_btn.bind("<Enter>", lambda event: change_thickness(event, browse_btn, False))
 	browse_btn.bind("<Leave>", lambda event: change_thickness(event, browse_btn, True))
 	browse_btn.bind("<ButtonRelease-1>", browse_click)
