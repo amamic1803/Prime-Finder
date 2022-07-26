@@ -65,8 +65,9 @@ if __name__ == '__main__':
 	root.resizable(False, False)
 	root.iconbitmap(resource_path("Prime-Finder-icon.ico"))
 	root.geometry(f"500x500+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 250}")
+	root.config(background="#80C0C0")
 
-	title = Label(root, text="Prime-Finder", font=("Helvetica", 30, "bold", "italic"), borderwidth=0, background="#202A44", activebackground="#202A44", foreground="#ffffff", activeforeground="#ffffff")
+	title = Label(root, text="Prime-Finder", font=("Helvetica", 30, "bold", "italic"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
 	title.place(x=0, y=0, width=500, height=100)
 
 	file_lbl = Label(root, text="File:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#202A44", activebackground="#202A44", foreground="#ffffff", activeforeground="#ffffff")
