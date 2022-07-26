@@ -29,8 +29,8 @@ def check_prime_overflow(n: int):
 		return False
 
 def change_thickness(event, widget, typ):
-	global started
-	if not started:
+	global disabled
+	if not disabled:
 		if typ:
 			widget.config(highlightthickness=1)
 		else:
@@ -38,7 +38,7 @@ def change_thickness(event, widget, typ):
 
 def browse_click(event):
 	global started
-	if not started:
+	if not disabled:
 		init_dir = os.path.dirname(file_ent.get())
 		if not os.path.isdir(init_dir):
 			init_dir = os.path.join(os.path.expanduser('~'), 'Desktop')
@@ -47,6 +47,16 @@ def browse_click(event):
 			file_ent.delete(0, END)
 			file_ent.insert(0, selection.replace("/", "\\"))
 			file_ent.xview_moveto(1)
+
+def generate_click(event):
+	global disabled
+	if not disabled:
+		pass
+
+def validate_click(event):
+	global disabled
+	if not disabled:
+		pass
 
 def check_if_prime(n: int, showresult=False):
 	try:
@@ -63,13 +73,15 @@ def check_if_prime(n: int, showresult=False):
 			return ret
 
 def num_prime_check(event=None):
-	num = num_ent.get()
-	try:
-		num = int(num)
-		process_num = Process(target=check_if_prime, args=(num, True))
-		process_num.start()
-	except ValueError:
-		pass
+	global disabled
+	if not disabled:
+		num = num_ent.get()
+		try:
+			num = int(num)
+			process_num = Process(target=check_if_prime, args=(num, True))
+			process_num.start()
+		except ValueError:
+			pass
 
 def validate_input(full_text):
 	if " " in full_text or "-" in full_text:
@@ -83,17 +95,27 @@ def validate_input(full_text):
 		except ValueError:
 			return False
 
+def toggle_gui():
+	global disabled
+	disabled = True
+	num_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+	browse_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+	validate_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+	generate_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+	num_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
+	file_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
+
 
 if __name__ == '__main__':
 	freeze_support()
 
-	started = False
+	disabled = False
 
 	root = Tk()
 	root.title("Prime Finder")
 	root.resizable(False, False)
 	root.iconbitmap(resource_path("Prime-Finder-icon.ico"))
-	root.geometry(f"500x500+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 250}")
+	root.geometry(f"500x240+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 120}")
 	root.config(background="#80C0C0")
 
 	reg = root.register(validate_input)
@@ -112,13 +134,27 @@ if __name__ == '__main__':
 	num_btn.bind("<ButtonRelease-1>", num_prime_check)
 
 	file_lbl = Label(root, text="Generate primes:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
-	file_lbl.place(x=0, y=150, width=145, height=30)
+	file_lbl.place(x=0, y=155, width=145, height=30)
 	file_ent = Entry(root, font=("Helvetica", 10), borderwidth=0, highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", disabledbackground="#263939", disabledforeground="#ffffff", background="#406060", foreground="#ffffff", justify=LEFT, insertbackground="#ffffff")
-	file_ent.place(x=141, y=150, width=264, height=30)
+	file_ent.place(x=141, y=155, width=264, height=30)
 	browse_btn = Label(root, text="Browse", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
-	browse_btn.place(x=420, y=150, width=65, height=30)
+	browse_btn.place(x=420, y=155, width=65, height=30)
 	browse_btn.bind("<Enter>", lambda event: change_thickness(event, browse_btn, False))
 	browse_btn.bind("<Leave>", lambda event: change_thickness(event, browse_btn, True))
 	browse_btn.bind("<ButtonRelease-1>", browse_click)
+
+	validate_btn = Label(root, text="Validate", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	validate_btn.place(x=340, y=195, width=65, height=30)
+	validate_btn.bind("<Enter>", lambda event: change_thickness(event, validate_btn, False))
+	validate_btn.bind("<Leave>", lambda event: change_thickness(event, validate_btn, True))
+	validate_btn.bind("<ButtonRelease-1>", validate_click)
+
+	generate_btn = Label(root, text="Generate", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	generate_btn.place(x=420, y=195, width=65, height=30)
+	generate_btn.bind("<Enter>", lambda event: change_thickness(event, generate_btn, False))
+	generate_btn.bind("<Leave>", lambda event: change_thickness(event, generate_btn, True))
+	generate_btn.bind("<ButtonRelease-1>", generate_click)
+
+	toggle_gui()
 
 	root.mainloop()
