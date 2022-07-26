@@ -2,11 +2,13 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter.messagebox import showerror, showinfo
 from multiprocessing import Process, Pool, freeze_support
+from threading import Thread
 import sys
 import os
 import rust_check_if_prime
 from math import floor
 import psutil
+
 
 def resource_path(relative_path):
 	""" Get absolute path to resource, works for dev and for PyInstaller """
@@ -78,10 +80,18 @@ def num_prime_check(event=None):
 		num = num_ent.get()
 		try:
 			num = int(num)
+			toggle_gui()
 			process_num = Process(target=check_if_prime, args=(num, True))
 			process_num.start()
+			waiting_thread = Thread(target=wait_check_to_end, args=(process_num, ))
+			waiting_thread.start()
 		except ValueError:
 			pass
+
+def wait_check_to_end(process):
+	process.join()
+	process.close()
+	toggle_gui()
 
 def validate_input(full_text):
 	if " " in full_text or "-" in full_text:
@@ -97,13 +107,22 @@ def validate_input(full_text):
 
 def toggle_gui():
 	global disabled
-	disabled = True
-	num_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
-	browse_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
-	validate_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
-	generate_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
-	num_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
-	file_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
+	if disabled:
+		disabled = False
+		num_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", background="#406060", activeforeground="#406060")
+		browse_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", background="#406060", activeforeground="#406060")
+		validate_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", background="#406060", activeforeground="#406060")
+		generate_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", background="#406060", activeforeground="#406060")
+		num_ent.config(state="normal", highlightcolor="#ffffff", highlightbackground="#ffffff")
+		file_ent.config(state="normal", highlightcolor="#ffffff", highlightbackground="#ffffff")
+	else:
+		disabled = True
+		num_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+		browse_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+		validate_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+		generate_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000", background="#263939", activeforeground="#263939")
+		num_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
+		file_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
 
 
 if __name__ == '__main__':
@@ -154,7 +173,5 @@ if __name__ == '__main__':
 	generate_btn.bind("<Enter>", lambda event: change_thickness(event, generate_btn, False))
 	generate_btn.bind("<Leave>", lambda event: change_thickness(event, generate_btn, True))
 	generate_btn.bind("<ButtonRelease-1>", generate_click)
-
-	toggle_gui()
 
 	root.mainloop()
