@@ -5,7 +5,7 @@ from multiprocessing import Process, Pool, freeze_support
 from threading import Thread
 import sys
 import os
-import rust_check_if_prime
+import rust
 from math import floor
 import psutil
 
@@ -20,15 +20,17 @@ def resource_path(relative_path):
 	return os.path.join(base_path, relative_path)
 
 def check_prime_overflow(n: int):
-	if n >= 2:
-		if n % 2 == 0 and n != 2:
+	if n < 2:
+		return False
+	elif n == 2:
+		return True
+	else:
+		if n % 2 == 0:
 			return False
 		for i in range(3, floor(n ** 0.5) + 1, 2):
 			if n % i == 0:
 				return False
 		return True
-	else:
-		return False
 
 def change_thickness(event, widget, typ):
 	global disabled
@@ -119,7 +121,7 @@ def get_last_line(file_path):
 
 def check_if_prime(n: int, showresult=False):
 	try:
-		ret = rust_check_if_prime.run(n)
+		ret = rust.check_if_prime_u128.run(n)
 	except OverflowError:
 		ret = check_prime_overflow(n)
 	if psutil.Process(os.getpid()).parent() is not None:
