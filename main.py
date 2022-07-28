@@ -1,13 +1,14 @@
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter.messagebox import showerror, showinfo
-from multiprocessing import Process, Pool, freeze_support
+from multiprocessing import Process, Pool, freeze_support, Value
 from threading import Thread
 import sys
 import os
 import rust
 from math import floor
 import psutil
+import ctypes
 
 
 def resource_path(relative_path):
@@ -96,15 +97,17 @@ def validate_click(event):
 			showerror(title="File error!", message="Invalid file selected!")
 
 def check_click(event=None):
-	global disabled
+	global disabled, check_var, check_num, check_process
 	if not disabled:
 		num = num_ent.get()
 		try:
 			num = int(num)
+			check_num = num
 			toggle_gui()
-			process_num = Process(target=check_if_prime, args=(num, True))
-			process_num.start()
-			waiting_thread = Thread(target=wait_check_to_end, args=(process_num, ))
+			num_btn.config(text="Checking")
+			check_process = Process(target=check_if_prime, args=(num, True, check_var))
+			check_process.start()
+			waiting_thread = Thread(target=wait_check_to_end)
 			waiting_thread.start()
 		except ValueError:
 			pass
@@ -119,24 +122,33 @@ def get_last_line(file_path):
 			file.seek(0)
 		return file.readline().decode()
 
-def check_if_prime(n: int, showresult=False):
+def check_if_prime(n: int, showresult=False, check=None):
 	try:
-		ret = rust.check_if_prime_u128.run(n)
+		ret = rust.check_if_prime_u128(n)
 	except OverflowError:
 		ret = check_prime_overflow(n)
 	if psutil.Process(os.getpid()).parent() is not None:
 		if showresult:
 			if ret:
-				showinfo(title="Prime Finder", message=f"{n} is a prime number!")
+				check.value = True
 			else:
-				showinfo(title="Prime Finder", message=f"{n} is NOT a prime number!")
+				check.value = False
 		else:
 			return ret
 
-def wait_check_to_end(process):
-	process.join()
-	process.close()
-	toggle_gui()
+def wait_check_to_end():
+	global check_var, check_num, check_process
+	try:
+		check_process.join()
+		check_process.close()
+		toggle_gui()
+		num_btn.config(text="Check")
+		if check_var.value:
+			showinfo(title="Prime Finder", message=f"{check_num} is a prime number!", parent=root)
+		else:
+			showinfo(title="Prime Finder", message=f"{check_num} is NOT a prime number!", parent=root)
+	except (ValueError, RuntimeError, OSError):
+		pass
 
 def validate_input(full_text):
 	if " " in full_text or "-" in full_text:
@@ -174,6 +186,9 @@ if __name__ == '__main__':
 	freeze_support()
 
 	disabled = False
+	check_var = Value(ctypes.c_bool)
+	check_num = 0
+	check_process = None
 
 	root = Tk()
 	root.title("Prime Finder")
@@ -220,3 +235,10 @@ if __name__ == '__main__':
 	generate_btn.bind("<ButtonRelease-1>", generate_click)
 
 	root.mainloop()
+
+	try:
+		check_process.kill()
+		check_process.join()
+		check_process.close()
+	except (AttributeError, ValueError):
+		pass
