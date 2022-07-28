@@ -7,7 +7,6 @@ import sys
 import os
 import rust
 from math import floor
-import psutil
 import ctypes
 
 
@@ -41,6 +40,12 @@ def change_thickness(event, widget, typ):
 		else:
 			widget.config(highlightthickness=3)
 
+def change_thickness_generate(event, typ):
+	if typ:
+		generate_btn.config(highlightthickness=1)
+	else:
+		generate_btn.config(highlightthickness=3)
+
 def browse_click(event):
 	global started
 	if not disabled:
@@ -54,47 +59,118 @@ def browse_click(event):
 			file_ent.xview_moveto(1)
 
 def generate_click(event):
-	global disabled
-	if not disabled:
-		pass
+	global generation_running, generation_num
+	if generation_running.value:
+		generation_running.value = False
+		val = generation_num.value + 1
+		if val == 256:
+			generation_num.value = 0
+		else:
+			generation_num.value = val
+		toggle_gui()
+		generate_btn.config(text="Generate")
+	else:
+		generation_running.value = True
+		path = file_ent.get()
+		if os.path.isfile(path) and os.path.splitext(path)[1] == ".txt":
+			try:
+				last_num = get_last_line(path)
+				if last_num == "":
+					with open(file=path, mode="w", encoding="utf-8") as file:
+						file.write("2\n")
+				last_num = int(get_last_line(path))
+				if check_if_prime(last_num):
+					if last_num == 2:
+						last_num = 3
+					else:
+						last_num += 2
+					generate_proc = Process(target=generation, args=(path, last_num, generation_running, generation_num, generation_num.value))
+					generate_proc.start()
+					toggle_gui()
+					generate_btn.config(text="Stop", highlightcolor="red", highlightbackground="red")
+				else:
+					raise ValueError
+			except ValueError:
+				showerror(title="File error!", message="The file is not valid!", parent=root)
+				generation_running.value = False
+		else:
+			showerror(title="File error!", message="Invalid file selected!", parent=root)
+			generation_running.value = False
+
+def generation(path, number, running, run_value, running_num):
+	num_of_cpus = os.cpu_count()
+	with open(file=path, mode="a", encoding="utf-8") as file, Pool(processes=num_of_cpus) as pool:
+		queue_results = []
+		queue_numbers = []
+		result = ""
+		while run_value.value == running_num and running.value:
+			if len(queue_results) < 2 * num_of_cpus:
+				queue_numbers.append(number)
+				queue_results.append(pool.apply_async(check_if_prime, args=(number,)))
+				number += 2
+			else:
+				if queue_results[0].get():
+					result += f"{queue_numbers[0]}\n"
+					if len(result) > 8_500_000:
+						file.write(result)
+						file.flush()
+						os.fsync(file.fileno())
+						result = ""
+				queue_results.pop(0)
+				queue_numbers.pop(0)
+		file.write(result)
 
 def validate_click(event):
 	global disabled
 	if not disabled:
 		path = file_ent.get()
-		if os.path.isfile(path):
-			num_of_cpus = os.cpu_count()
-			with open(file=path, mode="r", encoding="utf-8") as file, Pool(processes=num_of_cpus) as pool:
-				queue = []
-				good = True
-				ended = False
-				while True:
-					if len(queue) < 2 * num_of_cpus and not ended:
-						line = file.readline()
-						if line != "":
-							try:
-								line = int(line.rstrip("\n"))
-							except ValueError:
-								good = False
-								break
-							queue.append(pool.apply_async(check_if_prime, args=(line, )))
-						else:
-							ended = True
-					elif len(queue) == 0 and ended:
-						break
-					else:
-						if not queue[0].get():
-							good = False
-							break
-						queue.pop(0)
-				curr_pos = file.tell()
-				file.seek(0, os.SEEK_END)
-				if good and file.tell() == curr_pos and get_last_line(path)[-1] == "\n":
-					showinfo(title="Validation", message="The file is valid!")
-				else:
-					showerror(title="Validation", message="The file is not valid!")
+		if os.path.isfile(path) and os.path.splitext(path) == ".txt":
+			valid_thrd = Thread(target=validation, args=(path, ))
+			valid_thrd.start()
+			toggle_gui()
+			validate_btn.config(text="Validating")
 		else:
-			showerror(title="File error!", message="Invalid file selected!")
+			showerror(title="File error!", message="Invalid file selected!", parent=root)
+
+def validation(path):
+	global validation_running
+	validation_running = True
+	num_of_cpus = os.cpu_count()
+	with open(file=path, mode="r", encoding="utf-8") as file, Pool(processes=num_of_cpus) as pool:
+		queue = []
+		good = True
+		ended = False
+		while validation_running:
+			if len(queue) < 2 * num_of_cpus and not ended:
+				line = file.readline()
+				if line != "":
+					try:
+						line = int(line.rstrip("\n"))
+					except ValueError:
+						good = False
+						break
+					queue.append(pool.apply_async(check_if_prime, args=(line,)))
+				else:
+					ended = True
+			elif len(queue) == 0 and ended:
+				break
+			else:
+				if not queue[0].get():
+					good = False
+					break
+				queue.pop(0)
+		if validation_running:
+			toggle_gui()
+			validate_btn.config(text="Validate")
+			curr_pos = file.tell()
+			file.seek(0, os.SEEK_END)
+			try:
+				if good and file.tell() == curr_pos and get_last_line(path)[-1] == "\n":
+					raise IndexError
+				else:
+					showerror(title="Validation", message="The file is not valid!", parent=root)
+			except IndexError:
+				showinfo(title="Validation", message="The file is valid!", parent=root)
 
 def check_click(event=None):
 	global disabled, check_var, check_num, check_process
@@ -127,14 +203,13 @@ def check_if_prime(n: int, showresult=False, check=None):
 		ret = rust.check_if_prime_u128(n)
 	except OverflowError:
 		ret = check_prime_overflow(n)
-	if psutil.Process(os.getpid()).parent() is not None:
-		if showresult:
-			if ret:
-				check.value = True
-			else:
-				check.value = False
+	if showresult:
+		if ret:
+			check.value = True
 		else:
-			return ret
+			check.value = False
+	else:
+		return ret
 
 def wait_check_to_end():
 	global check_var, check_num, check_process
@@ -147,7 +222,7 @@ def wait_check_to_end():
 			showinfo(title="Prime Finder", message=f"{check_num} is a prime number!", parent=root)
 		else:
 			showinfo(title="Prime Finder", message=f"{check_num} is NOT a prime number!", parent=root)
-	except (ValueError, RuntimeError, OSError):
+	except (AttributeError, ValueError, RuntimeError, OSError):
 		pass
 
 def validate_input(full_text):
@@ -186,9 +261,17 @@ if __name__ == '__main__':
 	freeze_support()
 
 	disabled = False
+
 	check_var = Value(ctypes.c_bool)
 	check_num = 0
 	check_process = None
+
+	validation_running = False
+
+	generation_running = Value(ctypes.c_bool)
+	generation_running.value = False
+	generation_num = Value(ctypes.c_uint64)
+	generation_num.value = 0
 
 	root = Tk()
 	root.title("Prime Finder")
@@ -230,8 +313,8 @@ if __name__ == '__main__':
 
 	generate_btn = Label(root, text="Generate", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
 	generate_btn.place(x=420, y=195, width=65, height=30)
-	generate_btn.bind("<Enter>", lambda event: change_thickness(event, generate_btn, False))
-	generate_btn.bind("<Leave>", lambda event: change_thickness(event, generate_btn, True))
+	generate_btn.bind("<Enter>", lambda event: change_thickness_generate(event, False))
+	generate_btn.bind("<Leave>", lambda event: change_thickness_generate(event, True))
 	generate_btn.bind("<ButtonRelease-1>", generate_click)
 
 	root.mainloop()
@@ -242,3 +325,6 @@ if __name__ == '__main__':
 		check_process.close()
 	except (AttributeError, ValueError):
 		pass
+
+	validation_running = False
+	generation_running.value = False
