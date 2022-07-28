@@ -1,1 +1,0 @@
-pyinstaller "main.py" --upx-dir "D:\My Documents\Antonio\Python\UPX" --noconsole --icon "Prime-Finder-icon.ico" --onefile --add-data "Prime-Finder-icon.ico;." --clean --key "DarkLord76865" --name "Prime-Finder-v1"
