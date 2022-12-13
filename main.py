@@ -1,13 +1,16 @@
-from tkinter import *
-from tkinter.filedialog import askopenfilename
-from tkinter.messagebox import showerror, showinfo
+import ctypes
+import os
+import sys
+import threading
 from multiprocessing import Process, Pool, freeze_support, Value
 from threading import Thread
-import sys
-import os
-import rust
-from math import floor
-import ctypes
+from tkinter import *
+from tkinter.filedialog import askopenfilename
+from tkinter.messagebox import showerror, showinfo, askyesno
+
+from lib.rust import is_prime_big  # string input
+from lib.rust import is_prime_u128  # u128 input
+from lib.rust import sieve_of_atkin  # usize input
 
 
 def resource_path(relative_path):
@@ -19,19 +22,6 @@ def resource_path(relative_path):
 		base_path = os.path.abspath(".")
 	return os.path.join(base_path, relative_path)
 
-def check_prime_overflow(n: int):
-	if n < 2:
-		return False
-	elif n == 2:
-		return True
-	else:
-		if n % 2 == 0:
-			return False
-		for i in range(3, floor(n ** 0.5) + 1, 2):
-			if n % i == 0:
-				return False
-		return True
-
 def change_thickness(event, widget, typ):
 	global disabled
 	if not disabled:
@@ -41,10 +31,12 @@ def change_thickness(event, widget, typ):
 			widget.config(highlightthickness=3)
 
 def change_thickness_generate(event, typ):
-	if typ:
-		generate_btn.config(highlightthickness=1)
-	else:
-		generate_btn.config(highlightthickness=3)
+	global sieve_running
+	if not sieve_running:
+		if typ:
+			generate_btn.config(highlightthickness=1)
+		else:
+			generate_btn.config(highlightthickness=3)
 
 def browse_click(event):
 	global started
@@ -58,9 +50,29 @@ def browse_click(event):
 			file_ent.insert(0, selection.replace("/", "\\"))
 			file_ent.xview_moveto(1)
 
+def enter_limit_click(event=None):
+	global limit_number, num_ent_temp, select_window
+	limit_number = int(num_ent_temp.get())
+	select_window.destroy()
+
+def sieve_thrd(limit, path):
+	global sieve_running
+	global sieve_process
+	try:
+		sieve_process = Process(target=generation_sieve, args=(limit, path))
+		sieve_process.start()
+		sieve_process.join()
+	except Exception:
+		pass
+	toggle_gui()
+	generation_running.value = False
+	sieve_running = False
+
 def generate_click(event):
-	global generation_running, generation_num
-	if generation_running.value:
+	global generation_running, generation_num, sieve_running
+	if sieve_running:
+		pass
+	elif generation_running.value:
 		generation_running.value = False
 		val = generation_num.value + 1
 		if val == 256:
@@ -76,6 +88,54 @@ def generate_click(event):
 			try:
 				last_num = get_last_line(path)
 				if last_num == "":
+					yes_no_result = askyesno(title="Generation method?", message="Do you want to set a limit to calculate primes up to it fast?", parent=root)
+					if yes_no_result:
+						global limit_number, num_ent_temp, select_window
+
+						limit_number = 0
+
+						select_window = Toplevel(root)
+						select_window.title("Set number up to which primes will be generated!")
+						select_window.resizable(False, False)
+						select_window.iconbitmap(resource_path("data/Prime-Finder-icon.ico"))
+						select_window.geometry(f"385x50+{root.winfo_screenwidth() // 2 - (385 // 2)}+{root.winfo_screenheight() // 2 - 25}")
+						select_window.config(background="#80C0C0")
+						select_window.grab_set()
+						select_window.focus_force()
+
+						reg2 = select_window.register(validate_input)
+
+						num_lbl_temp = Label(select_window, text="Upper limit:", font=("Helvetica", 12, "bold"), borderwidth=0,
+						                background="#80C0C0",
+						                activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
+						num_lbl_temp.place(x=0, y=10, width=115, height=30)
+						num_ent_temp = Entry(select_window, font=("Helvetica", 10), justify=CENTER, validate="key",
+						                validatecommand=(reg2, "%P"),
+						                borderwidth=0, highlightthickness=1, highlightbackground="#ffffff",
+						                highlightcolor="#ffffff",
+						                disabledbackground="#263939", disabledforeground="#ffffff",
+						                background="#406060",
+						                foreground="#ffffff", insertbackground="#ffffff")
+						num_ent_temp.place(x=111, y=10, width=200, height=30)
+						num_btn_temp = Label(select_window, text="Enter", font=("Helvetica", 10), highlightthickness=1,
+						                highlightbackground="#ffffff",
+						                highlightcolor="#ffffff", borderwidth=0, background="#406060",
+						                activebackground="#406060",
+						                foreground="#ffffff", activeforeground="#ffffff")
+						num_btn_temp.place(x=315, y=10, width=65, height=30)
+						num_btn_temp.bind("<Enter>", lambda event: change_thickness(event, num_btn_temp, False))
+						num_btn_temp.bind("<Leave>", lambda event: change_thickness(event, num_btn_temp, True))
+						num_btn_temp.bind("<ButtonRelease-1>", enter_limit_click)
+
+						select_window.wait_window()
+
+						if limit_number >= 10:
+							sieve_running = True
+							toggle_gui()
+							sieve_thread = threading.Thread(target=sieve_thrd, args=(limit_number, path))
+							sieve_thread.start()
+							return
+
 					with open(file=path, mode="w", encoding="utf-8") as file:
 						file.write("2\n")
 				last_num = int(get_last_line(path))
@@ -84,6 +144,7 @@ def generate_click(event):
 						last_num = 3
 					else:
 						last_num += 2
+
 					generate_proc = Process(target=generation, args=(path, last_num, generation_running, generation_num, generation_num.value))
 					generate_proc.start()
 					toggle_gui()
@@ -119,6 +180,10 @@ def generation(path, number, running, run_value, running_num):
 				queue_results.pop(0)
 				queue_numbers.pop(0)
 		file.write(result)
+
+def generation_sieve(limit, path):
+	with open(file=path, mode="w", encoding="utf-8") as file:
+		file.write("\n".join(map(str, sieve_of_atkin(limit))))
 
 def validate_click(event):
 	global disabled
@@ -200,9 +265,9 @@ def get_last_line(file_path):
 
 def check_if_prime(n: int, showresult=False, check=None):
 	try:
-		ret = rust.check_if_prime_u128(n)
+		ret = is_prime_u128(n)
 	except OverflowError:
-		ret = check_prime_overflow(n)
+		ret = is_prime_big(str(n))
 	if showresult:
 		if ret:
 			check.value = True
@@ -256,9 +321,22 @@ def toggle_gui():
 		num_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
 		file_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
 
+def main():
+	global check_var, check_num, check_process
+	global disabled
+	global generate_btn, browse_btn
+	global started
+	global file_ent
+	global root
+	global generation_running, generation_num
+	global validate_btn
+	global validation_running
+	global num_ent
+	global num_btn
+	global sieve_running
+	global sieve_process
 
-if __name__ == '__main__':
-	freeze_support()
+	sieve_running = False
 
 	disabled = False
 
@@ -276,42 +354,58 @@ if __name__ == '__main__':
 	root = Tk()
 	root.title("Prime Finder")
 	root.resizable(False, False)
-	root.iconbitmap(resource_path("Prime-Finder-icon.ico"))
+	root.iconbitmap(resource_path("data/Prime-Finder-icon.ico"))
 	root.geometry(f"500x240+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 120}")
 	root.config(background="#80C0C0")
 
 	reg = root.register(validate_input)
 
-	title = Label(root, text="Prime Finder", font=("Helvetica", 30, "bold", "italic"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
+	title = Label(root, text="Prime Finder", font=("Helvetica", 30, "bold", "italic"), borderwidth=0,
+	              background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
 	title.place(x=0, y=0, width=500, height=100)
 
-	num_lbl = Label(root, text="Check number:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
+	num_lbl = Label(root, text="Check number:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0",
+	                activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
 	num_lbl.place(x=0, y=100, width=145, height=30)
-	num_ent = Entry(root, font=("Helvetica", 10), justify=CENTER, validate="key", validatecommand=(reg, "%P"), borderwidth=0, highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", disabledbackground="#263939", disabledforeground="#ffffff", background="#406060", foreground="#ffffff", insertbackground="#ffffff")
+	num_ent = Entry(root, font=("Helvetica", 10), justify=CENTER, validate="key", validatecommand=(reg, "%P"),
+	                borderwidth=0, highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff",
+	                disabledbackground="#263939", disabledforeground="#ffffff", background="#406060",
+	                foreground="#ffffff", insertbackground="#ffffff")
 	num_ent.place(x=141, y=100, width=264, height=30)
-	num_btn = Label(root, text="Check", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	num_btn = Label(root, text="Check", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff",
+	                highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060",
+	                foreground="#ffffff", activeforeground="#ffffff")
 	num_btn.place(x=420, y=100, width=65, height=30)
 	num_btn.bind("<Enter>", lambda event: change_thickness(event, num_btn, False))
 	num_btn.bind("<Leave>", lambda event: change_thickness(event, num_btn, True))
 	num_btn.bind("<ButtonRelease-1>", check_click)
 
-	file_lbl = Label(root, text="Generate primes:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0", activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
+	file_lbl = Label(root, text="Generate primes:", font=("Helvetica", 12, "bold"), borderwidth=0, background="#80C0C0",
+	                 activebackground="#80C0C0", foreground="#ffffff", activeforeground="#ffffff")
 	file_lbl.place(x=0, y=155, width=145, height=30)
-	file_ent = Entry(root, font=("Helvetica", 10), borderwidth=0, highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", disabledbackground="#263939", disabledforeground="#ffffff", background="#406060", foreground="#ffffff", justify=LEFT, insertbackground="#ffffff")
+	file_ent = Entry(root, font=("Helvetica", 10), borderwidth=0, highlightthickness=1, highlightbackground="#ffffff",
+	                 highlightcolor="#ffffff", disabledbackground="#263939", disabledforeground="#ffffff",
+	                 background="#406060", foreground="#ffffff", justify=LEFT, insertbackground="#ffffff")
 	file_ent.place(x=141, y=155, width=264, height=30)
-	browse_btn = Label(root, text="Browse", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	browse_btn = Label(root, text="Browse", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff",
+	                   highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060",
+	                   foreground="#ffffff", activeforeground="#ffffff")
 	browse_btn.place(x=420, y=155, width=65, height=30)
 	browse_btn.bind("<Enter>", lambda event: change_thickness(event, browse_btn, False))
 	browse_btn.bind("<Leave>", lambda event: change_thickness(event, browse_btn, True))
 	browse_btn.bind("<ButtonRelease-1>", browse_click)
 
-	validate_btn = Label(root, text="Validate", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	validate_btn = Label(root, text="Validate", font=("Helvetica", 10), highlightthickness=1,
+	                     highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060",
+	                     activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
 	validate_btn.place(x=340, y=195, width=65, height=30)
 	validate_btn.bind("<Enter>", lambda event: change_thickness(event, validate_btn, False))
 	validate_btn.bind("<Leave>", lambda event: change_thickness(event, validate_btn, True))
 	validate_btn.bind("<ButtonRelease-1>", validate_click)
 
-	generate_btn = Label(root, text="Generate", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
+	generate_btn = Label(root, text="Generate", font=("Helvetica", 10), highlightthickness=1,
+	                     highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0, background="#406060",
+	                     activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
 	generate_btn.place(x=420, y=195, width=65, height=30)
 	generate_btn.bind("<Enter>", lambda event: change_thickness_generate(event, False))
 	generate_btn.bind("<Leave>", lambda event: change_thickness_generate(event, True))
@@ -326,5 +420,18 @@ if __name__ == '__main__':
 	except (AttributeError, ValueError):
 		pass
 
+	try:
+		sieve_process.kill()
+		sieve_process.join()
+		sieve_process.close()
+	except (AttributeError, ValueError):
+		pass
+
 	validation_running = False
 	generation_running.value = False
+
+
+if __name__ == '__main__':
+	freeze_support()
+
+	main()
