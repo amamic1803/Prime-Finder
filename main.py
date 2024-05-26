@@ -97,7 +97,7 @@ def generate_click(event):
 						select_window = Toplevel(root)
 						select_window.title("Set number up to which primes will be generated!")
 						select_window.resizable(False, False)
-						select_window.iconbitmap(resource_path("data/Prime-Finder-icon.ico"))
+						select_window.iconbitmap(resource_path("resources/Prime-Finder-icon.ico"))
 						select_window.geometry(f"385x50+{root.winfo_screenwidth() // 2 - (385 // 2)}+{root.winfo_screenheight() // 2 - 25}")
 						select_window.config(background="#80C0C0")
 						select_window.grab_set()
@@ -354,7 +354,7 @@ def main():
 	root = Tk()
 	root.title("Prime Finder")
 	root.resizable(False, False)
-	root.iconbitmap(resource_path("data/Prime-Finder-icon.ico"))
+	root.iconbitmap(resource_path("resources/Prime-Finder-icon.ico"))
 	root.geometry(f"500x240+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 120}")
 	root.config(background="#80C0C0")
 
