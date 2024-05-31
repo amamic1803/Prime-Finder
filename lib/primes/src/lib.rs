@@ -71,7 +71,7 @@ fn sieve_of_eratosthenes(n: u64) -> Vec<u64> {
 }
 
 #[pymodule]
-fn rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn primes(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_prime, m)?)?;
     m.add_function(wrap_pyfunction!(sieve_of_eratosthenes, m)?)?;
     Ok(())
