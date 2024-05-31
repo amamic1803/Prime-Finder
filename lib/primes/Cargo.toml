@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.21.2", features = ["extension-module"] }
-malachite = "0.4.9"
+malachite = { version = "0.4.10", features = ["enable_pyo3"] }

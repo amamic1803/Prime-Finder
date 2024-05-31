@@ -1,121 +1,78 @@
+use malachite::num::arithmetic::traits::FloorSqrt;
 use malachite::Natural;
-use malachite::num::arithmetic::traits::CeilingSqrt;
-use num::integer::Roots;
 use pyo3::prelude::*;
-use std::str::FromStr;
 
 #[pyfunction]
-fn is_prime_u128(x: u128) -> bool {
-    return if x < 2 {
-        false
-    } else if x == 2 {
-        true
-    } else if x % 2 == 0 {
-        false
-    } else {
-        for i in (3..(x.sqrt() + 1)).step_by(2) {
-            if x % i == 0 {
-                return false
-            }
-        }
-        true
+fn is_prime(n: Natural) -> bool {
+    //! Check if a number is prime.
+
+    if n <= Natural::const_from(3) {
+        return n > Natural::const_from(1);
     }
+
+    if &n % Natural::const_from(2) == Natural::const_from(0) || &n % Natural::const_from(3) == Natural::const_from(0) {
+        return false;
+    }
+
+    let limit = (&n).floor_sqrt();
+    let mut i = Natural::const_from(5);
+    while i <= limit {
+        if &n % &i == Natural::const_from(0) || &n % (&i + Natural::const_from(2)) == Natural::const_from(0) {
+            return false;
+        }
+        i += Natural::const_from(6);
+    }
+
+    true
 }
 
 #[pyfunction]
-fn is_prime_big(x: &str) -> bool {
-    let x: Natural = Natural::from_str(x).unwrap();
-    let big_0: Natural = Natural::from(0_u8);
-    let big_2: Natural = Natural::from(2_u8);
-    let big_3: Natural = Natural::from(3_u8);
-    let root_x: Natural = x.clone().ceiling_sqrt();
-    return if x < big_2 {
-        false
-    } else if x == big_2 {
-        true
-    } else if &x % &big_2 == big_0 {
-        false
-    } else {
-        let mut curr_num = big_3;
-        while curr_num < root_x {
-            if &x % &curr_num == big_0 {
-                return false
-            }
-            curr_num += & big_2;
-        }
-        true
-    }
-}
+fn sieve_of_eratosthenes(n: u64) -> Vec<u64> {
+    match n {
+        0..=1 => Vec::with_capacity(0),
+        2 => vec![2],
+        _ => {
+            let mut results = vec![2];
+            let mut sieve = vec![true; (n - 1) as usize / 2];
 
-#[pyfunction]
-fn sieve_of_atkin(limit: usize) -> Vec<usize> {
-    let mut results: Vec<usize> = vec![];
+            let ind_to_val = |i: usize| ((i as u64) << 1) + 3; // calculate number value from index in sieve
+            let val_to_ind = |v: u64| ((v - 3) >> 1) as usize; // calculate index in sieve from number value
 
-    let limit: u128 = limit as u128;
+            for prime_ind in 0..sieve.len() {
+                if sieve[prime_ind] {
+                    // get prime number value
+                    let prime_val = ind_to_val(prime_ind);
 
-    if limit > 2 {
-        results.push(2);
-    }
-    if limit > 3 {
-        results.push(3);
-    }
+                    // check all multiples of prime number value and mark them as not prime
+                    // start checking at prime_val^2 (all smaller multiples have already been checked by smaller primes)
+                    let mut check_val = prime_val * prime_val;
+                    let mut check_ind = val_to_ind(check_val);
+                    if check_ind >= sieve.len() {
+                        break;
+                    }
 
-    let mut sieve: Vec<bool> = vec![];
-    for _ in 0..(limit + 1) {
-        sieve.push(false);
-    }
-
-    let mut x: u128 = 1;
-    let mut y: u128;
-    let mut n: u128;
-    while (x * x) <= (limit as u128) {
-        y = 1;
-        while (y * y) <= limit {
-            n = (4 * x * x) + (y * y);
-            if (n <= limit) && ((n % 12 == 1) || (n % 12 == 5)) {
-                sieve[n as usize] ^= true;
-            }
-
-            n = (3 * x * x) + (y * y);
-            if (n <= limit) && (n % 12 == 7) {
-                sieve[n as usize] ^= true;
-            }
-
-            if x > y {
-                n = (3 * x * x) - (y * y);
-                if (n <= limit) && (n % 12 == 11) {
-                    sieve[n as usize] ^= true;
+                    while check_ind < sieve.len() {
+                        sieve[check_ind] = false;
+                        // we want check_val to always be odd, prime_val is always odd so we can just add prime_val * 2
+                        // (because if we added 2 odd numbers we would get an even number)
+                        check_val += prime_val << 1;
+                        check_ind = val_to_ind(check_val);
+                    }
                 }
             }
 
-            y += 1;
-        }
-        x += 1;
-    }
+            // convert sieve indices that are true to their corresponding number values and add them to results
+            results.extend(sieve.into_iter().enumerate().filter_map(|(i, prime)| if prime { Some(ind_to_val(i)) } else { None }));
 
-    let mut r: u128 = 5;
-    while (r * r) <= limit {
-        if sieve[r as usize] {
-            for i in (((r * r) as usize)..((limit + 1) as usize)).step_by((r * r) as usize) {
-                sieve[i] = false;
-            }
-        }
-        r += 1;
-    }
-
-    for a in (5_usize)..((limit + 1) as usize) {
-        if sieve[a] {
-            results.push(a);
+            // return results
+            results
         }
     }
-
-    results
 }
 
 #[pymodule]
-fn rust(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(is_prime_u128, m)?)?;
-    m.add_function(wrap_pyfunction!(is_prime_big, m)?)?;
-    m.add_function(wrap_pyfunction!(sieve_of_atkin, m)?)?;
+fn rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(is_prime, m)?)?;
+    m.add_function(wrap_pyfunction!(sieve_of_eratosthenes, m)?)?;
     Ok(())
 }
