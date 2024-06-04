@@ -29,7 +29,7 @@ fn is_prime(n: Natural) -> bool {
 #[pyfunction]
 fn sieve_of_eratosthenes(n: u64) -> Vec<u64> {
     //! Generate all prime numbers up to a given number using the sieve of Eratosthenes.
-    
+
     match n {
         0..=1 => Vec::with_capacity(0),
         2 => vec![2],
