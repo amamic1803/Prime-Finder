@@ -98,7 +98,7 @@ class App:
 			                    background="#406060", activeforeground="#406060", cursor="hand2")
 			self.browse_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff",
 			                       background="#406060", activeforeground="#406060", cursor="hand2")
-			self.generate_btn.config(highlightcolor="#ffffff", text="Generate")
+			self.generate_btn.config(highlightcolor="#ffffff", highlightbackground="#ffffff", text="Generate")
 			self.num_ent.config(state="normal", highlightcolor="#ffffff", highlightbackground="#ffffff")
 			self.file_ent.config(state="normal", highlightcolor="#ffffff", highlightbackground="#ffffff")
 		else:
@@ -106,7 +106,7 @@ class App:
 			                    background="#263939", activeforeground="#263939", cursor="arrow")
 			self.browse_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000",
 			                       background="#263939", activeforeground="#263939", cursor="arrow")
-			self.generate_btn.config(highlightcolor="red", text="Stop")
+			self.generate_btn.config(highlightcolor="#ff0000", highlightbackground="#ff0000", text="Stop")
 			self.num_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
 			self.file_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
 		self.running = not self.running
@@ -166,6 +166,7 @@ class App:
 				self.worker_process.close()
 			except (AttributeError, OSError, ValueError):
 				pass
+			self.toggle_gui()
 			return
 
 		path = self.file_ent.get()
