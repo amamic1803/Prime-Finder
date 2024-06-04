@@ -77,7 +77,7 @@ def build(name, console, onefile, uac_admin, icon, files, folders):
 
 def main():
 	name = "Prime-Finder"
-	version = "2.1.0"
+	version = "2.1.1"
 
 	console = False
 	onefile = True
