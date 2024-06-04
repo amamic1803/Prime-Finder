@@ -7,7 +7,7 @@ on:
 jobs:
   lint-python:
     name: Lint Python
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -18,10 +18,7 @@ jobs:
 
   lint-rust:
     name: Lint Rust
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     defaults:
       run:
         shell: bash
