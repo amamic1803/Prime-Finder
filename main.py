@@ -5,7 +5,7 @@ import tkinter as tk
 from multiprocessing import Process, freeze_support, Value
 from threading import Thread
 from tkinter.filedialog import askopenfilename
-from tkinter.messagebox import showerror, showinfo
+from tkinter.messagebox import askyesno, showerror, showinfo
 
 import primes
 
@@ -74,8 +74,8 @@ class App:
 		                             highlightbackground="#ffffff", highlightcolor="#ffffff", borderwidth=0,
 		                             background="#406060", activebackground="#406060", foreground="#ffffff", activeforeground="#ffffff")
 		self.generate_btn.place(x=420, y=195, width=65, height=30)
-		self.generate_btn.bind("<Enter>", lambda event: self.generate_btn.config(highlightthickness=3) if not self.running else None)
-		self.generate_btn.bind("<Leave>", lambda event: self.generate_btn.config(highlightthickness=1) if not self.running else None)
+		self.generate_btn.bind("<Enter>", lambda event: self.generate_btn.config(highlightthickness=3))
+		self.generate_btn.bind("<Leave>", lambda event: self.generate_btn.config(highlightthickness=1))
 		self.generate_btn.bind("<ButtonRelease-1>", lambda event: self.generate_click())
 
 		self.status_lbl = tk.Label(self.root, text="Ready", font=("Helvetica", 10, "bold"), borderwidth=0,
@@ -89,26 +89,24 @@ class App:
 			self.worker_process.kill()
 			self.worker_process.join()
 			self.worker_process.close()
-		except (AttributeError, ValueError):
+		except (AttributeError, OSError, ValueError):
 			pass
 
 	def toggle_gui(self):
 		if self.running:
 			self.num_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff",
-			                    background="#406060", activeforeground="#406060")
+			                    background="#406060", activeforeground="#406060", cursor="hand2")
 			self.browse_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff",
-			                       background="#406060", activeforeground="#406060")
-			self.generate_btn.config(highlightthickness=1, highlightbackground="#ffffff", highlightcolor="#ffffff",
-			                         background="#406060", activeforeground="#406060")
+			                       background="#406060", activeforeground="#406060", cursor="hand2")
+			self.generate_btn.config(highlightcolor="#ffffff", text="Generate")
 			self.num_ent.config(state="normal", highlightcolor="#ffffff", highlightbackground="#ffffff")
 			self.file_ent.config(state="normal", highlightcolor="#ffffff", highlightbackground="#ffffff")
 		else:
 			self.num_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000",
-			                    background="#263939", activeforeground="#263939")
+			                    background="#263939", activeforeground="#263939", cursor="arrow")
 			self.browse_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000",
-			                       background="#263939", activeforeground="#263939")
-			self.generate_btn.config(highlightthickness=1, highlightbackground="#000000", highlightcolor="#000000",
-			                         background="#263939", activeforeground="#263939")
+			                       background="#263939", activeforeground="#263939", cursor="arrow")
+			self.generate_btn.config(highlightcolor="red", text="Stop")
 			self.num_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
 			self.file_ent.config(state="disabled", highlightcolor="#000000", highlightbackground="#000000")
 		self.running = not self.running
@@ -166,15 +164,16 @@ class App:
 				self.worker_process.kill()
 				self.worker_process.join()
 				self.worker_process.close()
-			except (AttributeError, ValueError):
+			except (AttributeError, OSError, ValueError):
 				pass
 			return
 
 		path = self.file_ent.get()
 
 		if os.path.isfile(path) and os.path.getsize(path) > 0:
-			showerror(title="File error!", message="The file is not empty!", parent=self.root)
-			return
+			answer = askyesno(title="File error!", message="The file is not empty! Do you want to overwrite it?", parent=self.root)
+			if not answer:
+				return
 		elif os.path.isdir(path):
 			showerror(title="File error!", message="The file is a directory!", parent=self.root)
 			return
@@ -192,7 +191,6 @@ class App:
 
 		select_window = tk.Toplevel(self.root)
 		select_window.title("Set a number up to which the primes will be generated!")
-		select_window.iconbitmap(self.resource_path("resources/Prime-Finder-icon.ico"))
 		select_window.resizable(False, False)
 		select_window.geometry(f"385x50"
 		                       f"+{self.root.winfo_screenwidth() // 2 - (385 // 2)}"
@@ -215,7 +213,7 @@ class App:
 
 		num_btn_temp = tk.Label(select_window, text="Enter", font=("Helvetica", 10), highlightthickness=1, highlightbackground="#ffffff",
 		                        highlightcolor="#ffffff", borderwidth=0, background="#406060", activebackground="#406060",
-		                        foreground="#ffffff", activeforeground="#ffffff")
+		                        foreground="#ffffff", activeforeground="#ffffff", cursor="hand2")
 		num_btn_temp.place(x=315, y=10, width=65, height=30)
 		num_btn_temp.bind("<Enter>", lambda event: num_btn_temp.config(highlightthickness=3))
 		num_btn_temp.bind("<Leave>", lambda event: num_btn_temp.config(highlightthickness=1))
@@ -229,7 +227,9 @@ class App:
 				return
 			select_window.destroy()
 		num_btn_temp.bind("<ButtonRelease-1>", lambda event: set_limit())
+		select_window.bind("<Return>", lambda event: set_limit())
 
+		select_window.iconbitmap(self.resource_path("resources/Prime-Finder-icon.ico"))
 		select_window.wait_window()
 		if limit_number < 2:
 			return
@@ -278,6 +278,7 @@ class App:
 def check(num, check_result, check_result_set):
 	check_result.value = primes.is_prime(num)
 	check_result_set.value = True
+
 
 def generate(limit, path):
 	prime_numbers = primes.sieve_of_eratosthenes(limit)
